@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-payflow}
+      POSTGRES_USER: ${POSTGRES_USER:-payflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-payflow_local}
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    volumes: ["payflow-postgres:/var/lib/postgresql/data"]
+  backend:
+    build: ./backend
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-payflow}
+      DB_USERNAME: ${POSTGRES_USER:-payflow}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-payflow_local}
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me-now}
+      DEMO_ENABLED: ${DEMO_ENABLED:-false}
+      LAB_ENABLED: ${LAB_ENABLED:-false}
+    ports: ["8080:8080"]
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports: ["3000:80"]
+volumes:
+  payflow-postgres:
+
